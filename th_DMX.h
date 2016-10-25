@@ -8,7 +8,7 @@
 #include "ofxNetwork.h"
 
 #include "sj_common.h"
-
+#include "thread_Base.h"
 
 /************************************************************
 class
@@ -100,7 +100,7 @@ struct LED_KEYS{
 Singleton
 	https://ja.wikipedia.org/wiki/Singleton_%E3%83%91%E3%82%BF%E3%83%BC%E3%83%B3
 **************************************************/
-class THREAD__DMX_KEY_TIMETABLE : public ofThread
+class THREAD__DMX_KEY_TIMETABLE : public THREAD_BASE
 {
 private:
 	/****************************************
@@ -108,7 +108,6 @@ private:
 	****************************************/
 	enum{
 		NUM_SAMPLES_PER_BUFFER = 3000, // 99 sec(たまたま。切りのいい値)
-		NUM_BUFFERS = 2,
 	};
 	enum{
 		UDP_SEND_PORT = 12347,
@@ -117,19 +116,11 @@ private:
 	/****************************************
 	****************************************/
 	LED_KEYS *TimeTable[NUM_BUFFERS];
-	bool b_Empty[NUM_BUFFERS];
 	
 	LED_KEYS Leds_out;
 	
 	int id_from, id_to;
-	int BufferId;
-	
-	FILE* fp;
-	bool b_End;
-	bool b_EOF;
 	bool b_1stUpdate;
-	
-	int t_ofs_ms;
 	
 	ofxUDPManager udpConnection;
 	
@@ -147,28 +138,31 @@ private:
 	/********************
 	********************/
 	void charge(int BufferId_toCharge);
-	bool Wait_NextBufferFilled(double timeout);
-	int get_NextBufferId();
-	void threadedFunction();
-	
 	
 public:
 	/****************************************
 	****************************************/
-	static THREAD__DMX_KEY_TIMETABLE& getInstance(){
+	/********************
+	********************/
+	static THREAD__DMX_KEY_TIMETABLE* getInstance(){
+		static THREAD__DMX_KEY_TIMETABLE inst;
+		return &inst;
+		
+		/*
 		static THREAD__DMX_KEY_TIMETABLE inst;
 		return inst;
+		*/
 	}
 	
-	void exit();
-	
-	void setOffset(int ofs);
-	
-	void setup();
+	/********************
+	********************/
 	void Reset();
-	bool IsReady();
-	void update(int now_ms);
 	
+	/********************
+	********************/
+	void exit();
+	void setup();
+	void update(int now_ms);
 	void draw();
 	void draw_black();
 };
