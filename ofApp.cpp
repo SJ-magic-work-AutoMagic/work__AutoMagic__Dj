@@ -5,20 +5,6 @@
 /************************************************************
 param
 ************************************************************/
-enum{
-	OSC_DMX_LIGHT,
-	OSC_VJ,
-	
-	NUM_OSC_TARGET,
-};
-
-static OSC_TARGET OscTarget[] = {
-	OSC_TARGET("10.0.0.2", 12346, 12345), // OSC_DMX_LIGHT,
-	// OSC_TARGET("127.0.0.1", 12346, 12345), // OSC_DMX_LIGHT,
-	
-	OSC_TARGET("10.0.0.3", 12349, 12348), // OSC_VJ,
-};
-
 static bool b_OscReady[NUM_OSC_TARGET];
 static float t_timerFrom[NUM_OSC_TARGET];
 
@@ -31,8 +17,8 @@ ofApp::ofApp()
 , VOL_INIT(1.0)
 , VOL_STEP(0.05)
 , timer_StartStaying_inThis_State(0)
-, thread_DmxTimeTable(THREAD__DMX_KEY_TIMETABLE::getInstance())
 {
+	thread_TimeTable[THREAD_TIMETABLE__DMX] = THREAD__DMX_KEY_TIMETABLE::getInstance();
 }
 
 /******************************
@@ -41,15 +27,20 @@ void ofApp::exit()
 {
 	/********************
 	********************/
-	thread_DmxTimeTable.exit();
+	for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+		thread_TimeTable[i]->exit();
+	}
 	try{
 		/********************
 		stop済みのthreadをさらにstopすると、Errorが出るようだ。
 		********************/
-		thread_DmxTimeTable.stopThread();
-		while(thread_DmxTimeTable.isThreadRunning()){
-			thread_DmxTimeTable.waitForThread(true);
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+			thread_TimeTable[i]->stopThread();
+			while(thread_TimeTable[i]->isThreadRunning()){
+				thread_TimeTable[i]->waitForThread(true);
+			}
 		}
+		
 	}catch(...){
 		printf("Thread exiting Error\n");
 	}
@@ -108,7 +99,9 @@ void ofApp::setup(){
 		
 	/********************
 	********************/
-	thread_DmxTimeTable.setup();
+	for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+		thread_TimeTable[i]->setup();
+	}
 	
 	/********************
 	********************/
@@ -126,7 +119,9 @@ void ofApp::setup(){
 	
 	/********************
 	********************/
-	thread_DmxTimeTable.startThread(true, false); // blocking, non verboss
+	for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+		thread_TimeTable[i]->startThread(true, false); // blocking, non verboss
+	}
 }
 
 /******************************
@@ -246,9 +241,16 @@ void ofApp::update(){
 	
 	switch(State){
 		case STATE__WAIT_MYSELF_READY:
-			if( thread_DmxTimeTable.IsReady() ){
-				Transition(STATE__WAIT_CHILDREN_READY);
+		{
+			int counter = 0;
+			for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+				if( thread_TimeTable[i]->IsReady() )	counter++;
 			}
+			
+			if(NUM_THREAD_TIMETABLE <= counter)	Transition(STATE__WAIT_CHILDREN_READY);
+		}
+			
+			
 			break;
 			
 		case STATE__WAIT_CHILDREN_READY:
@@ -295,11 +297,13 @@ void ofApp::update(){
 			fprint_debug_Log(buf_Log);
 				
 			sound.stop();
-			thread_DmxTimeTable.stopThread();
-			thread_DmxTimeTable.waitForThread(true);
-			thread_DmxTimeTable.Reset();
-			thread_DmxTimeTable.setOffset(t_SeekTo_ms);
-			thread_DmxTimeTable.startThread(true, false);
+			for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+				thread_TimeTable[i]->stopThread();
+				thread_TimeTable[i]->waitForThread(true);
+				thread_TimeTable[i]->Reset();
+				thread_TimeTable[i]->setOffset(t_SeekTo_ms);
+				thread_TimeTable[i]->startThread(true, false);
+			}
 			
 			Reset();
 			
@@ -321,17 +325,19 @@ void ofApp::update(){
 				fprint_debug_Log(buf_Log);
 				
 				sound.stop();
-				thread_DmxTimeTable.stopThread();
-				thread_DmxTimeTable.waitForThread(true);
-				thread_DmxTimeTable.Reset();
-				thread_DmxTimeTable.startThread(true, false);
+				for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+					thread_TimeTable[i]->stopThread();
+					thread_TimeTable[i]->waitForThread(true);
+					thread_TimeTable[i]->Reset();
+					thread_TimeTable[i]->startThread(true, false);
+				}
 				
 				Reset();
 				
 				
 			}else if(Last_INT_music_ms < now_ms){
 				/* */
-				thread_DmxTimeTable.update(now_ms);
+				for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->update(now_ms);
 				
 				/* */
 				Last_INT_music_ms = now_ms;
@@ -457,12 +463,12 @@ void ofApp::draw(){
 		/********************
 		********************/
 		draw_time( ofGetFrameRate() );
-		thread_DmxTimeTable.draw();
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw();
 		
 		if(b_showGui) gui.draw();
 		
 	}else{
-		thread_DmxTimeTable.draw_black();
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw_black();
 		print_timer();
 	}
 }

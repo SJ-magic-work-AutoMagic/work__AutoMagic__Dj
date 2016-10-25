@@ -10,8 +10,6 @@ function
 /******************************
 ******************************/
 THREAD__DMX_KEY_TIMETABLE::THREAD__DMX_KEY_TIMETABLE()
-: fp(NULL)
-, t_ofs_ms(0)
 {
 	for(int i = 0; i < NUM_BUFFERS; i++){
 		TimeTable[i] = new LED_KEYS[NUM_SAMPLES_PER_BUFFER];
@@ -25,44 +23,12 @@ THREAD__DMX_KEY_TIMETABLE::~THREAD__DMX_KEY_TIMETABLE()
 	for(int i = 0; i < NUM_BUFFERS; i++){
 		delete[] TimeTable[i];
 	}
-	
-	if(fp)	fclose(fp);
 }
 
 /******************************
 ******************************/
 void THREAD__DMX_KEY_TIMETABLE::exit()
 {
-}
-
-/******************************
-******************************/
-void THREAD__DMX_KEY_TIMETABLE::threadedFunction()
-{
-	while(isThreadRunning()) {
-		bool b_Empty_copy[NUM_BUFFERS];
-		
-		lock();
-		for(int i = 0; i < NUM_BUFFERS; i++){
-			b_Empty_copy[i] = b_Empty[i];
-		}
-		unlock();
-		
-		for(int i = 0; i < NUM_BUFFERS; i++){
-			if(!b_EOF && b_Empty_copy[i]){
-				charge(i);
-			}
-		}
-	}
-}
-
-/******************************
-******************************/
-void THREAD__DMX_KEY_TIMETABLE::setOffset(int ofs)
-{
-	this->lock();
-	t_ofs_ms = ofs;
-	this->unlock();
 }
 
 /******************************
@@ -75,7 +41,10 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 	
 	/********************
 	********************/
-	if(b_EOF)	return;
+	lock();
+	bool b_EOF_Copy = b_EOF;
+	unlock();
+	if(b_EOF_Copy)	return;
 	
 	/********************
 	********************/
@@ -99,9 +68,8 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 			
 			lock();
 			b_Empty[BufferId_toCharge] = false;
-			unlock();
-			
 			b_EOF = true;
+			unlock();
 			
 			/* */
 			sprintf(buf_Log, "%.3f,,[%d] Last Charge Finish\n", ElapsedTime_f, BufferId_toCharge);
@@ -216,61 +184,26 @@ void THREAD__DMX_KEY_TIMETABLE::Reset()
 {
 	/********************
 	********************/
+	this->THREAD_BASE::Reset();
+	
+	
+	/********************
+	********************/
 	this->lock();
 	
 	/********************
 	********************/
-	if(fp)	{ fclose(fp); fp = NULL; }
-	
 	fp = fopen("../../../data/StoryBoard.txt", "r");
 	if(fp == NULL)	{ ERROR_MSG(); ofExit(1); }
 	
-	b_End = false;
-	b_EOF = false;
-	
-	for(int i = 0; i < NUM_BUFFERS; i++){
-		b_Empty[i] = true;
-	}
-	
-	BufferId = 0;
 	id_from = 0;
 	id_to = 0;
 	
 	b_1stUpdate = true;
 	
-	t_ofs_ms = 0;
-	
 	/********************
 	********************/
 	this->unlock();
-}
-
-/******************************
-******************************/
-bool THREAD__DMX_KEY_TIMETABLE::IsReady()
-{
-	/********************
-	fileの最後まで読み込みが完了している.
-	全てのBufferを使わずに最後まで格納できてしまうこともあるので.
-	********************/
-	if(b_EOF) return true;
-
-
-	/********************
-	********************/
-	bool b_Empty_copy[NUM_BUFFERS];
-	
-	this->lock();
-	for(int i = 0; i < NUM_BUFFERS; i++){
-		b_Empty_copy[i] = b_Empty[i];
-	}
-	this->unlock();
-	
-	for(int i = 0; i < NUM_BUFFERS; i++){
-		if(b_Empty_copy[i] == true)	return false;
-	}
-	
-	return true;
 }
 
 /******************************
@@ -310,7 +243,7 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 			sprintf(buf_Log, "%.3f,%d,Buffer Change Start(BufferId from = %d)\n", ElapsedTime_f, now_ms, BufferId);
 			fprint_debug_Log(buf_Log);
 			
-			Wait_NextBufferFilled(10);
+			Wait_NextBufferFilled(1);
 			
 			this->lock();
 			b_Empty[BufferId] = true;
@@ -350,66 +283,6 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 		/* */
 		Leds_out.Led[i].LimitCheck();
 	}
-}
-
-/******************************
-******************************/
-int THREAD__DMX_KEY_TIMETABLE::get_NextBufferId()
-{
-	int NextBufferId = BufferId + 1;
-	if(NUM_BUFFERS <= NextBufferId) NextBufferId = 0;
-	
-	return NextBufferId;
-}
-
-/******************************
-param
-	timeout
-		timeout in second.
-
-return
-	0	:OK. Completed within timeout.
-	1	:NG. 実際は、0secで抜ける想定なので、ERROR exitとしてある.
-******************************/
-bool THREAD__DMX_KEY_TIMETABLE::Wait_NextBufferFilled(double timeout)
-{
-	/********************
-	********************/
-	float ElapsedTime_f = ofGetElapsedTimef();
-	
-	/********************
-	********************/
-	bool b_Log_printed = false; // 一度でも待たされた場合はOne time Logを残す.
-	
-	double time_StepIn_sec = ElapsedTime_f;
-	
-	/********************
-	********************/
-	int NextBufferId = get_NextBufferId();
-	
-	while( ElapsedTime_f - time_StepIn_sec < timeout ){
-		this->lock();
-		bool b_Empty_copy = b_Empty[NextBufferId];
-		this->unlock();
-		
-		if(!b_Empty_copy){
-			return 0;
-			
-		}else if(!b_Log_printed){
-			b_Log_printed = true;
-			
-			/* */
-			char buf_Log[BUF_SIZE];
-			sprintf(buf_Log, ",,Wait NextBuffer Filled occured\n");
-			fprint_debug_Log(buf_Log);
-		}
-		// Sleep(1); // ms
-		usleep(1000);
-	}
-	
-	ERROR_MSG();
-	ofExit();
-	return 1;
 }
 
 /******************************
