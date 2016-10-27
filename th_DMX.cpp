@@ -37,6 +37,10 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 {
 	/********************
 	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
 	float ElapsedTime_f = ofGetElapsedTimef();
 	
 	/********************
@@ -50,7 +54,7 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 	********************/
 	char buf_Log[BUF_SIZE];
 	sprintf(buf_Log, "%.3f,,[%d] Charge Start\n", ElapsedTime_f, BufferId_toCharge);
-	fprint_debug_Log(buf_Log);
+	fprint_debug_Log(buf_Log, LogFile_id);
 	
 	
 	char buf[BUF_SIZE];
@@ -73,7 +77,7 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 			
 			/* */
 			sprintf(buf_Log, "%.3f,,[%d] Last Charge Finish\n", ElapsedTime_f, BufferId_toCharge);
-			fprint_debug_Log(buf_Log);
+			fprint_debug_Log(buf_Log, LogFile_id);
 			return;
 			
 		}else{
@@ -154,7 +158,7 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 					
 					/* */
 					sprintf(buf_Log, "%.3f,,[%d] Charge Finish\n", ElapsedTime_f, BufferId_toCharge);
-					fprint_debug_Log(buf_Log);
+					fprint_debug_Log(buf_Log, LogFile_id);
 					return;
 				}
 			}
@@ -164,8 +168,19 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 
 /******************************
 ******************************/
+void THREAD__DMX_KEY_TIMETABLE::set_LogFile_id()
+{
+	LogFile_id = THREAD_TIMETABLE__DMX;
+}
+
+/******************************
+******************************/
 void THREAD__DMX_KEY_TIMETABLE::setup()
 {
+	/********************
+	********************/
+	set_LogFile_id();
+	
 	/********************
 	********************/
 	udpConnection.Create();
@@ -194,7 +209,19 @@ void THREAD__DMX_KEY_TIMETABLE::Reset()
 	/********************
 	********************/
 	fp = fopen("../../../data/StoryBoard.txt", "r");
-	if(fp == NULL)	{ ERROR_MSG(); ofExit(1); }
+	if(fp == NULL){
+		ERROR_MSG();
+		b_valid = false;
+		
+		stopThread();
+		while(isThreadRunning()){
+			waitForThread(true);
+		}
+
+	}else{
+		b_valid = true;
+	}
+	
 	
 	id_from = 0;
 	id_to = 0;
@@ -210,6 +237,10 @@ void THREAD__DMX_KEY_TIMETABLE::Reset()
 ******************************/
 void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 {
+	/********************
+	********************/
+	if(!b_valid) return;
+	
 	/********************
 	********************/
 	float ElapsedTime_f = ofGetElapsedTimef();
@@ -241,7 +272,7 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 		if(NUM_SAMPLES_PER_BUFFER <= id_to){
 			/* */
 			sprintf(buf_Log, "%.3f,%d,Buffer Change Start(BufferId from = %d)\n", ElapsedTime_f, now_ms, BufferId);
-			fprint_debug_Log(buf_Log);
+			fprint_debug_Log(buf_Log, LogFile_id);
 			
 			Wait_NextBufferFilled(1);
 			
@@ -254,7 +285,7 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 			
 			/* */
 			sprintf(buf_Log, "%.3f,%d,Buffer Change Finish(BufferId to = %d)\n", ElapsedTime_f, now_ms, BufferId);
-			fprint_debug_Log(buf_Log);
+			fprint_debug_Log(buf_Log, LogFile_id);
 		}
 		
 		Leds_To = &TimeTable[BufferId][id_to];
@@ -287,8 +318,14 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 
 /******************************
 ******************************/
-void THREAD__DMX_KEY_TIMETABLE::draw()
+void THREAD__DMX_KEY_TIMETABLE::draw(float* spectrum, int N_SPECTRUM)
 {
+	/********************
+	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
 	string message = "";
 	
 	for(int i = 0; i < NUM_LEDS; i++){
@@ -300,13 +337,25 @@ void THREAD__DMX_KEY_TIMETABLE::draw()
 					ofToString(int(Leds_out.Led[i].Tilt))	+ "|";
 	}
 	
-	udpConnection.Send(message.c_str(),message.length());
+	/********************
+	送り先のIPが不在だと、Errorとなり、関数の向こう側でError message表示し続けるので。
+	********************/
+	if(udpConnection.Send(message.c_str(),message.length()) == -1){
+		ERROR_MSG();
+		b_valid = false;
+	}
 }
 
 /******************************
 ******************************/
-void THREAD__DMX_KEY_TIMETABLE::draw_black()
+void THREAD__DMX_KEY_TIMETABLE::draw_black(float* spectrum, int N_SPECTRUM)
 {
+	/********************
+	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
 	string message = "";
 	
 	for(int i = 0; i < NUM_LEDS; i++){
@@ -318,7 +367,13 @@ void THREAD__DMX_KEY_TIMETABLE::draw_black()
 					ofToString(0)	+ "|";
 	}
 	
-	udpConnection.Send(message.c_str(),message.length());
+	/********************
+	送り先のIPが不在だと、Errorとなり、関数の向こう側でError message表示し続けるので。
+	********************/
+	if(udpConnection.Send(message.c_str(),message.length()) == -1){
+		ERROR_MSG();
+		b_valid = false;
+	}
 }
 
 

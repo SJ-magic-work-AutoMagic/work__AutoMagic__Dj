@@ -15,7 +15,7 @@ OSC_TARGET OscTarget[] = {
 
 /************************************************************
 ************************************************************/
-static FILE* fp_Log = NULL;
+static FILE* fp_Log[NUM_THREAD_TIMETABLE];
 
 /************************************************************
 ************************************************************/
@@ -31,21 +31,37 @@ void printMessage(const char* message)
 ******************************/
 void fopen_LogFile()
 {
-	fp_Log = fopen("../../../data/Log.csv", "w");
-	if(fp_Log == NULL)	{ ERROR_MSG(); ofExit(); }
+	for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+		char FileName[BUF_SIZE];
+		sprintf(FileName, "../../../data/Log_%d.csv", i);
+		
+		fp_Log[i] = fopen(FileName, "w");
+		if(fp_Log == NULL)	{ ERROR_MSG(); ofExit(); }
+	}
 }
 
 /******************************
 ******************************/
 void fclose_LogFile()
 {
-	if(fp_Log) fclose(fp_Log);
+	for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+		if(fp_Log[i]) fclose(fp_Log[i]);
+	}
 }
 
 /******************************
 ******************************/
-void fprint_debug_Log(char* message)
+void fprint_debug_Log(char* message, int FileId)
 {
-	fprintf(fp_Log, "%s", message);
+	if(NUM_THREAD_TIMETABLE <= FileId)	{ ERROR_MSG(); std::exit(1); }
+	
+	
+	if(FileId == -1){
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
+			fprintf(fp_Log[i], "%s", message);
+		}
+	}else{
+		fprintf(fp_Log[FileId], "%s", message);
+	}
 }
 

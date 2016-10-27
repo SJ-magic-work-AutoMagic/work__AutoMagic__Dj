@@ -18,7 +18,11 @@ ofApp::ofApp()
 , VOL_STEP(0.05)
 , timer_StartStaying_inThis_State(0)
 {
-	thread_TimeTable[THREAD_TIMETABLE__DMX] = THREAD__DMX_KEY_TIMETABLE::getInstance();
+	thread_TimeTable[THREAD_TIMETABLE__DMX]							= THREAD__DMX_KEY_TIMETABLE::getInstance();
+	thread_TimeTable[THREAD_TIMETABLE__VJ_CONTENTS_CHANGE_TIMING]	= THREAD__VJ_CONTENTS_CHANGE_TIMETABLE::getInstance();
+	thread_TimeTable[THREAD_TIMETABLE__VJ_COLORTHEME]				= THREAD__VJ_COLORTHEME_TIMETABLE::getInstance();
+	thread_TimeTable[THREAD_TIMETABLE__VJ_BPM_INFO]					= THREAD__VJ_BPM_INFO::getInstance();
+	thread_TimeTable[THREAD_TIMETABLE__VJ_ALPHA_FFT]				= THREAD__VJ_ALPHA_FFT::getInstance();
 }
 
 /******************************
@@ -35,10 +39,14 @@ void ofApp::exit()
 		stop済みのthreadをさらにstopすると、Errorが出るようだ。
 		********************/
 		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
-			thread_TimeTable[i]->stopThread();
-			while(thread_TimeTable[i]->isThreadRunning()){
-				thread_TimeTable[i]->waitForThread(true);
+		
+			if(thread_TimeTable[i]->isThreadRunning()){
+				thread_TimeTable[i]->stopThread();
+				while(thread_TimeTable[i]->isThreadRunning()){
+					thread_TimeTable[i]->waitForThread(true);
+				}
 			}
+			
 		}
 		
 	}catch(...){
@@ -93,7 +101,7 @@ void ofApp::setup(){
 	
 	b_showGui = false;
 	
-	for(int i = 0; i < N; i++){
+	for(int i = 0; i < N_SPECTRUM; i++){
 		spectrum[i] = 0;
 	}
 		
@@ -169,7 +177,7 @@ void ofApp::Transition(enum STATE NewState)
 			printMessage("STATE__RUNNING");
 			sprintf(buf_Log, "%.3f,,> STATE__RUNNING\n", ElapsedTime_f);
 			
-			strcat(buf_Log, ",,");
+			strcat(buf_Log, ",,OscChildrenReady = ");
 			for(int i = 0; i < NUM_OSC_TARGET; i++){
 				char buf_temp[BUF_SIZE];
 				sprintf(buf_temp, "%d+", b_OscReady[i]);
@@ -179,7 +187,7 @@ void ofApp::Transition(enum STATE NewState)
 			strcat(buf_Log, "\n");
 			break;
 	}
-	fprint_debug_Log(buf_Log);
+	fprint_debug_Log(buf_Log, -1);
 	timer_StartStaying_inThis_State = ElapsedTime_f;
 }
 
@@ -294,7 +302,7 @@ void ofApp::update(){
 		
 		if(t_SeekTo_ms != 0){
 			sprintf(buf_Log, "%.3f,%d,music Seek\n", ElapsedTime_f, now_ms);
-			fprint_debug_Log(buf_Log);
+			fprint_debug_Log(buf_Log, -1);
 				
 			sound.stop();
 			for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
@@ -316,13 +324,13 @@ void ofApp::update(){
 				b_1stINT_toPlay = false;
 				
 				sprintf(buf_Log, "%.3f,%d,1st INT to Play\n", ElapsedTime_f, now_ms);
-				fprint_debug_Log(buf_Log);
+				fprint_debug_Log(buf_Log, -1);
 			}
 			
 			if(now_ms < Last_INT_music_ms){ // Loop
 				printMessage("music Loop");
 				sprintf(buf_Log, "%.3f,%d,music Loop\n", ElapsedTime_f, now_ms);
-				fprint_debug_Log(buf_Log);
+				fprint_debug_Log(buf_Log, -1);
 				
 				sound.stop();
 				for(int i = 0; i < NUM_THREAD_TIMETABLE; i++){
@@ -356,14 +364,14 @@ void ofApp::getSpectrum()
 {
 	/********************
 	********************/
-	//Get current spectrum with N bands
-	float *val = ofSoundGetSpectrum( N );
+	//Get current spectrum with N_SPECTRUM bands
+	float *val = ofSoundGetSpectrum( N_SPECTRUM );
 	//We should not release memory of val,
 	//because it is managed by sound engine
 	
 	/********************
 	********************/
-	float val_ave[N];
+	float val_ave[N_SPECTRUM];
 	
 	/* */
 	static float LastINT_sec = 0;
@@ -396,7 +404,7 @@ void ofApp::getSpectrum()
 	float DownRatio = Down_per_ms * dt * 1000;
 	
 	/* */
-	for ( int i=0; i<N; i++ ) {
+	for ( int i=0; i<N_SPECTRUM; i++ ) {
 		/* */
 		val_ave[i] = SmoothFilterAlpha * val[i] + (1 - SmoothFilterAlpha) * spectrum[i];
 		
@@ -463,12 +471,12 @@ void ofApp::draw(){
 		/********************
 		********************/
 		draw_time( ofGetFrameRate() );
-		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw();
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw(spectrum, N_SPECTRUM);
 		
 		if(b_showGui) gui.draw();
 		
 	}else{
-		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw_black();
+		for(int i = 0; i < NUM_THREAD_TIMETABLE; i++)	thread_TimeTable[i]->draw_black(spectrum, N_SPECTRUM);
 		print_timer();
 	}
 }
