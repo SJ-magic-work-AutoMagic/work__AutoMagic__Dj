@@ -16,91 +16,72 @@ class
 
 /**************************************************
 **************************************************/
-struct LED_KEY{
-	/****************************************
-	param
-	****************************************/
-	unsigned char R;
-	unsigned char G;
-	unsigned char B;
-	unsigned char W;
+struct DATA_SET__ALPHA_FFT{
+	enum PARTICLE_POS{
+		PARTICLE_POS__LEFT_UP,
+		PARTICLE_POS__LEFT_MIDDLE,
+		PARTICLE_POS__LEFT_LOW,
+		
+		PARTICLE_POS__CENTER_UP,
+		PARTICLE_POS__CENTER,
+		PARTICLE_POS__CENTER_LOW,
+		
+		PARTICLE_POS__RIGHT_UP,
+		PARTICLE_POS__RIGHT_MIDDLE,
+		PARTICLE_POS__RIGHT_LOW,
+		
+		NUM_PARTICLE_POS,
+	};
 	
-	// 16 bit(13ch mode)なので、intで受ける
-	int Pan;
-	int Tilt;
+	double	mov_a;
+	bool	b_mov_Effect_On;
+	double	mov_a_0_12;
+	bool	b_mov0_Effect_On;
+	double	mov_a_1_2;
+	double	a_indicator;
+	double	a_particle;
+	PARTICLE_POS ParticlePos;
+	bool	b_GeneratedImage_on;
+	bool	b_text_on;
+	bool	b_Strobe_on;
 	
-	/****************************************
-	function
-	****************************************/
-	LED_KEY()
+	DATA_SET__ALPHA_FFT()
 	{
 		set_allParam_zero();
 	}
 	
 	void set_allParam_zero()
 	{
-		R		= 0;
-		G		= 0;
-		B		= 0;
-		W		= 0;
-		Pan		= 0;
-		Tilt	= 0;
-	}
-	
-	void LimitCheck()
-	{
-		enum{
-			MAX_8BIT = 255,
-			MAX_16BIT = 65535,
-		};
-		
-		/* */
-		if(R < 0)					R = 0;
-		else if(MAX_8BIT < R)		R = MAX_8BIT;
-
-		if(G < 0)					G = 0;
-		else if(MAX_8BIT < G)		G = MAX_8BIT;
-
-		if(B < 0)					B = 0;
-		else if(MAX_8BIT < B)		B = MAX_8BIT;
-
-		if(W < 0)					W = 0;
-		else if(MAX_8BIT < W)		W = MAX_8BIT;
-
-		/* */
-		if(Pan < 0)					Pan = 0;
-		else if(MAX_16BIT < Pan)	Pan = MAX_16BIT;
-
-		if(Tilt < 0)				Tilt = 0;
-		else if(MAX_16BIT < Tilt)	Tilt = MAX_16BIT;
+		mov_a = 0;
+		b_mov_Effect_On = 0;
+		mov_a_0_12 = 0;
+		b_mov0_Effect_On = 0;
+		mov_a_1_2 = 0;
+		a_indicator = 0;
+		a_particle = 0;
+		ParticlePos = PARTICLE_POS__CENTER;
+		b_GeneratedImage_on = 0;
+		b_text_on = 0;
+		b_Strobe_on = 0;
 	}
 };
 
-/**************************************************
-**************************************************/
-struct LED_KEYS{
-	/****************************************
-	param
-	****************************************/
+struct TIME_N_DATASET__ALPHA_FFT{
 	int time_ms;
-	LED_KEY Led[NUM_LEDS];
+	DATA_SET__ALPHA_FFT DataSet;
 	
-	/****************************************
-	function
-	****************************************/
-	void set_Param_of_AllLed_zero()
+	void set_allParam_zero()
 	{
-		for(int i = 0; i < NUM_LEDS; i++){
-			Led[i].set_allParam_zero();
-		}
+		DataSet.set_allParam_zero();
 	}
 };
+
 
 /**************************************************
 Singleton
 	https://ja.wikipedia.org/wiki/Singleton_%E3%83%91%E3%82%BF%E3%83%BC%E3%83%B3
 **************************************************/
-class THREAD__DMX_KEY_TIMETABLE : public THREAD_BASE
+class THREAD__VJ_ALPHA_FFT : public THREAD_BASE
 {
 private:
 	/****************************************
@@ -110,14 +91,13 @@ private:
 		NUM_SAMPLES_PER_BUFFER = 3000, // 99 sec(たまたま。切りのいい値)
 	};
 	enum{
-		UDP_SEND_PORT = 12347,
+		UDP_SEND_PORT = 12350,
 	};
 
 	/****************************************
 	****************************************/
-	LED_KEYS *TimeTable[NUM_BUFFERS];
-	
-	LED_KEYS Leds_out;
+	TIME_N_DATASET__ALPHA_FFT *TimeTable[NUM_BUFFERS];
+	TIME_N_DATASET__ALPHA_FFT data_to_output;
 	
 	int id_from, id_to;
 	bool b_1stUpdate;
@@ -130,29 +110,28 @@ private:
 	/********************
 	singleton
 	********************/
-	THREAD__DMX_KEY_TIMETABLE();
-	~THREAD__DMX_KEY_TIMETABLE();
-	THREAD__DMX_KEY_TIMETABLE(const THREAD__DMX_KEY_TIMETABLE&); // Copy constructor. no define.
-	THREAD__DMX_KEY_TIMETABLE& operator=(const THREAD__DMX_KEY_TIMETABLE&); // コピー代入演算子. no define.
+	THREAD__VJ_ALPHA_FFT();
+	~THREAD__VJ_ALPHA_FFT();
+	THREAD__VJ_ALPHA_FFT(const THREAD__VJ_ALPHA_FFT&); // Copy constructor. no define.
+	THREAD__VJ_ALPHA_FFT& operator=(const THREAD__VJ_ALPHA_FFT&); // コピー代入演算子. no define.
 	
 	/********************
 	********************/
 	void set_LogFile_id();
 	void charge(int BufferId_toCharge);
 	
+	/********************
+	********************/
+	void SetData_DataToCharge(FILE* fp, TIME_N_DATASET__ALPHA_FFT &DatasetToCharge);
+	
 public:
 	/****************************************
 	****************************************/
 	/********************
 	********************/
-	static THREAD__DMX_KEY_TIMETABLE* getInstance(){
-		static THREAD__DMX_KEY_TIMETABLE inst;
+	static THREAD__VJ_ALPHA_FFT* getInstance(){
+		static THREAD__VJ_ALPHA_FFT inst;
 		return &inst;
-		
-		/*
-		static THREAD__DMX_KEY_TIMETABLE inst;
-		return inst;
-		*/
 	}
 	
 	/********************

@@ -30,6 +30,17 @@ enum{
 	NUM_OSC_TARGET,
 };
 
+enum{
+	THREAD_TIMETABLE__DMX,
+	
+	THREAD_TIMETABLE__VJ_CONTENTS_CHANGE_TIMING,
+	THREAD_TIMETABLE__VJ_COLORTHEME,
+	THREAD_TIMETABLE__VJ_BPM_INFO,
+	THREAD_TIMETABLE__VJ_ALPHA_FFT,
+	
+	NUM_THREAD_TIMETABLE,
+};
+
 
 /************************************************************
 class
@@ -118,5 +129,5 @@ extern OSC_TARGET OscTarget[];
 extern void printMessage(const char* message);
 extern void fopen_LogFile();
 extern void fclose_LogFile();
-extern void fprint_debug_Log(char* message);
+extern void fprint_debug_Log(char* message, int FileId);
 

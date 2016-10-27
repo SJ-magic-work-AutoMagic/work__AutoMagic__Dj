@@ -9,7 +9,10 @@
 
 #include "sj_common.h"
 #include "th_DMX.h"
-
+#include "th_VJ_ContentsChange.h"
+#include "th_VJ_ColorTheme.h"
+#include "th_VJ_BpmInfo.h"
+#include "th_VJ_AlphaFFT.h"
 
 /************************************************************
 ************************************************************/
@@ -35,15 +38,6 @@ private:
 		TIMEOUT__CHILDREN_NORESPONSE_SEC = 2,
 	};
 	
-	enum{
-		THREAD_TIMETABLE__DMX,
-		/*
-		THREAD_TIMETABLE__VJ_CONTENTS_CHANGE_TIMING,
-		*/
-		
-		NUM_THREAD_TIMETABLE,
-	};
-	
 	/****************************************
 	****************************************/
 	ofTrueTypeFont font;
@@ -64,10 +58,10 @@ private:
 	/********************
 	********************/
 	enum{
-		N = 256,
+		N_SPECTRUM = 256,
 	};
 	
-	float spectrum[ N ];
+	float spectrum[ N_SPECTRUM ];
 	
     ofxPanel gui;
     ofxFloatSlider SmoothFilterThreshTime;

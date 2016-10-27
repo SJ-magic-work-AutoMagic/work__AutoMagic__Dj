@@ -11,6 +11,8 @@
 THREAD_BASE::THREAD_BASE()
 : fp(NULL)
 , t_ofs_ms(0)
+, b_valid(false)
+, LogFile_id(THREAD_TIMETABLE__DMX)
 {
 }
 
@@ -26,16 +28,18 @@ THREAD_BASE::~THREAD_BASE()
 void THREAD_BASE::threadedFunction()
 {
 	while(isThreadRunning()) {
+		bool b_EOF_Copy;
 		bool b_Empty_copy[NUM_BUFFERS];
 		
 		lock();
 		for(int i = 0; i < NUM_BUFFERS; i++){
 			b_Empty_copy[i] = b_Empty[i];
 		}
+		b_EOF_Copy = b_EOF;
 		unlock();
 		
 		for(int i = 0; i < NUM_BUFFERS; i++){
-			if(!b_EOF && b_Empty_copy[i]){
+			if(!b_EOF_Copy && b_Empty_copy[i]){
 				charge(i);
 			}
 		}
@@ -89,7 +93,7 @@ bool THREAD_BASE::Wait_NextBufferFilled(double timeout)
 			/* */
 			char buf_Log[BUF_SIZE];
 			sprintf(buf_Log, ",,Wait NextBuffer Filled occured\n");
-			fprint_debug_Log(buf_Log);
+			fprint_debug_Log(buf_Log, LogFile_id);
 		}
 		// Sleep(1); // ms
 		usleep(1000);
@@ -160,5 +164,254 @@ bool THREAD_BASE::IsReady()
 	
 	return true;
 }
+
+
+/************************************************************
+************************************************************/
+
+/******************************
+******************************/
+THREAD_BASE_STEPOVER::THREAD_BASE_STEPOVER()
+{
+}
+
+/******************************
+******************************/
+THREAD_BASE_STEPOVER::~THREAD_BASE_STEPOVER()
+{
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::exit()
+{
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::charge(int BufferId_toCharge)
+{
+	/********************
+	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
+	float ElapsedTime_f = ofGetElapsedTimef();
+	
+	/********************
+	********************/
+	lock();
+	bool b_EOF_Copy = b_EOF;
+	unlock();
+	if(b_EOF_Copy)	return;
+	
+	/********************
+	********************/
+	char buf_Log[BUF_SIZE];
+	sprintf(buf_Log, "%.3f,,[%d] Charge Start\n", ElapsedTime_f, BufferId_toCharge);
+	fprint_debug_Log(buf_Log, LogFile_id);
+	
+	
+	char buf[BUF_SIZE];
+	int Charge_id = 0;
+	
+	while(1){
+		if(fscanf(fp, "%s", buf) == EOF){
+			SetTime_DataToCharge(-1);
+			chargeTimeTable_byCopying(BufferId_toCharge, Charge_id);
+			
+			lock();
+			b_Empty[BufferId_toCharge] = false;
+			b_EOF = true;
+			unlock();
+			
+			/* */
+			sprintf(buf_Log, "%.3f,,[%d] Last Charge Finish\n", ElapsedTime_f, BufferId_toCharge);
+			fprint_debug_Log(buf_Log, LogFile_id);
+			return;
+			
+		}else{
+			if(strcmp(buf, "<time_ms>") == 0){
+				/********************
+				********************/
+				fscanf(fp, "%s", buf);
+				SetTime_DataToCharge(atoi(buf));
+				
+				/********************
+				Read and set.
+				********************/
+				SetData_DataToCharge(fp);
+				
+				/********************
+				********************/
+				lock();
+				int t_ofs_ms_temp = t_ofs_ms;
+				unlock();
+				
+				if(t_ofs_ms_temp == 0){
+					chargeTimeTable_byCopying(BufferId_toCharge, Charge_id);
+					Charge_id++;
+				}else{
+					if(t_ofs_ms_temp <= get_TimeData_from_DataToCharge()){
+						chargeTimeTable_byCopying(BufferId_toCharge, Charge_id);
+						Charge_id++;
+						
+						/* */
+						lock();
+						t_ofs_ms = 0;
+						unlock();
+						
+					}else{
+						// discard.
+					}
+				}
+				
+				/********************
+				********************/
+				if(NUM_SAMPLES_PER_BUFFER <= Charge_id){
+					lock();
+					b_Empty[BufferId_toCharge] = false;
+					unlock();
+					
+					/* */
+					sprintf(buf_Log, "%.3f,,[%d] Charge Finish\n", ElapsedTime_f, BufferId_toCharge);
+					fprint_debug_Log(buf_Log, LogFile_id);
+					return;
+				}
+			}
+		}
+	}
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::setup()
+{
+	set_LogFile_id();
+	
+	Reset();
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::Reset()
+{
+	/********************
+	********************/
+	this->THREAD_BASE::Reset();
+	
+	
+	/********************
+	********************/
+	this->lock();
+	
+	/********************
+	********************/
+	fp = open_ScenarioFile();
+	if(fp == NULL){
+		ERROR_MSG();
+		b_valid = false;
+		
+		stopThread();
+		while(isThreadRunning()){
+			waitForThread(true);
+		}
+
+	}else{
+		b_valid = true;
+	}
+	
+	id = 0;
+	b_send = false;
+	
+	/********************
+	********************/
+	this->unlock();
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::update(int now_ms)
+{
+	/********************
+	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
+	float ElapsedTime_f = ofGetElapsedTimef();
+	
+	/********************
+	********************/
+	if(b_End)	return;
+	
+	/********************
+	********************/
+	char buf_Log[BUF_SIZE];
+	static float LastINT_sec = -1;
+	
+	while( get_TimeData_from_TimeTable(BufferId, id) <= now_ms ){
+		if( (LastINT_sec == -1) || (ElapsedTime_f - LastINT_sec < 0.2) ){
+			b_send = true;
+			set_outputData(BufferId, id);
+		}
+		id++;
+		if(NUM_SAMPLES_PER_BUFFER <= id){
+			/* */
+			sprintf(buf_Log, "%.3f,%d,Buffer Change Start(BufferId from = %d)\n", ElapsedTime_f, now_ms, BufferId);
+			fprint_debug_Log(buf_Log, LogFile_id);
+			
+			Wait_NextBufferFilled(1);
+			
+			this->lock();
+			b_Empty[BufferId] = true;
+			this->unlock();
+			
+			BufferId = get_NextBufferId();
+			id = 0;
+			
+			/* */
+			sprintf(buf_Log, "%.3f,%d,Buffer Change Finish(BufferId to = %d)\n", ElapsedTime_f, now_ms, BufferId);
+			fprint_debug_Log(buf_Log, LogFile_id);
+		}
+		
+		if(get_TimeData_from_TimeTable(BufferId, id) == -1){
+			b_End = true;
+			return;
+		}
+	}
+	
+	LastINT_sec = ElapsedTime_f;
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::draw(float* spectrum, int N_SPECTRUM)
+{
+	/********************
+	********************/
+	if(!b_valid) return;
+	
+	/********************
+	********************/
+	if(b_send){
+		b_send = false;
+		
+		ofxOscMessage m;
+		setOscMessage_for_draw(m);
+		OscTarget[OSC_VJ].OscSend.sendMessage(m);
+	}
+}
+
+/******************************
+******************************/
+void THREAD_BASE_STEPOVER::draw_black(float* spectrum, int N_SPECTRUM)
+{
+	// nothing.
+}
+
+
+
 
 
