@@ -93,6 +93,8 @@ protected:
 	bool b_send;
 	int id;
 	
+	float LastINT_sec;
+	
 	/****************************************
 	function
 	****************************************/

@@ -184,8 +184,8 @@ void THREAD__DMX_KEY_TIMETABLE::setup()
 	/********************
 	********************/
 	udpConnection.Create();
-	udpConnection.Connect("10.0.0.2", UDP_SEND_PORT);
-	// udpConnection.Connect("127.0.0.1", UDP_SEND_PORT);
+	// udpConnection.Connect("10.0.0.2", UDP_SEND_PORT);
+	udpConnection.Connect("127.0.0.1", UDP_SEND_PORT);
 	udpConnection.SetNonBlocking(true);
 	
 	/********************
@@ -256,6 +256,8 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 	********************/
 	static LED_KEYS *Leds_From;
 	static LED_KEYS *Leds_To;
+	static LED_KEYS Dataset_Exchange;
+	
 	if(b_1stUpdate){
 		b_1stUpdate = false;
 		
@@ -276,6 +278,11 @@ void THREAD__DMX_KEY_TIMETABLE::update(int now_ms)
 			
 			Wait_NextBufferFilled(1);
 			
+			/* */
+			Dataset_Exchange = *Leds_From;
+			Leds_From = &Dataset_Exchange;
+			
+			/* */
 			this->lock();
 			b_Empty[BufferId] = true;
 			this->unlock();

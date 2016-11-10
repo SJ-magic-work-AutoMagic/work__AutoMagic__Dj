@@ -75,7 +75,7 @@ void THREAD__VJ_COLORTHEME_TIMETABLE::set_outputData(int BufferId, int id)
 ******************************/
 void THREAD__VJ_COLORTHEME_TIMETABLE::setOscMessage_for_draw(ofxOscMessage& m)
 {
-	m.setAddress("/VJColotTheme");
+	m.setAddress("/VJColorTheme");
 	m.addIntArg(data_to_output.ColorTheme_id);
 }
 

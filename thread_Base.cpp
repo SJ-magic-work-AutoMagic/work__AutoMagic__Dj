@@ -172,6 +172,7 @@ bool THREAD_BASE::IsReady()
 /******************************
 ******************************/
 THREAD_BASE_STEPOVER::THREAD_BASE_STEPOVER()
+: LastINT_sec(-1)
 {
 }
 
@@ -349,7 +350,6 @@ void THREAD_BASE_STEPOVER::update(int now_ms)
 	/********************
 	********************/
 	char buf_Log[BUF_SIZE];
-	static float LastINT_sec = -1;
 	
 	while( get_TimeData_from_TimeTable(BufferId, id) <= now_ms ){
 		if( (LastINT_sec == -1) || (ElapsedTime_f - LastINT_sec < 0.2) ){

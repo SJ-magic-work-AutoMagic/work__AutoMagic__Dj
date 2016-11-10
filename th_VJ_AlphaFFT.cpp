@@ -60,16 +60,13 @@ void THREAD__VJ_ALPHA_FFT::SetData_DataToCharge(FILE* fp, TIME_N_DATASET__ALPHA_
 	DatasetToCharge.DataSet.a_particle = atof(buf);
 	
 	fscanf(fp, "%s", buf);
-	DatasetToCharge.DataSet.ParticlePos = (DATA_SET__ALPHA_FFT::PARTICLE_POS)(atoi(buf));
-	
-	fscanf(fp, "%s", buf);
 	DatasetToCharge.DataSet.b_GeneratedImage_on = atoi(buf);
 	
 	fscanf(fp, "%s", buf);
 	DatasetToCharge.DataSet.b_text_on = atoi(buf);
 	
 	fscanf(fp, "%s", buf);
-	DatasetToCharge.DataSet.b_Strobe_on = atoi(buf);
+	DatasetToCharge.DataSet.a_Strobe = atof(buf);
 }
 
 /******************************
@@ -195,8 +192,8 @@ void THREAD__VJ_ALPHA_FFT::setup()
 	/********************
 	********************/
 	udpConnection.Create();
-	udpConnection.Connect("10.0.0.3", UDP_SEND_PORT);
-	// udpConnection.Connect("127.0.0.1", UDP_SEND_PORT);
+	// udpConnection.Connect("10.0.0.3", UDP_SEND_PORT);
+	udpConnection.Connect("127.0.0.1", UDP_SEND_PORT);
 	udpConnection.SetNonBlocking(true);
 	
 	/********************
@@ -268,6 +265,7 @@ void THREAD__VJ_ALPHA_FFT::update(int now_ms)
 	********************/
 	static TIME_N_DATASET__ALPHA_FFT *Dataset_From;
 	static TIME_N_DATASET__ALPHA_FFT *Dataset_To;
+	static TIME_N_DATASET__ALPHA_FFT Dataset_Exchange;
 	if(b_1stUpdate){
 		b_1stUpdate = false;
 		
@@ -288,6 +286,11 @@ void THREAD__VJ_ALPHA_FFT::update(int now_ms)
 			
 			Wait_NextBufferFilled(1);
 			
+			/* */
+			Dataset_Exchange = *Dataset_From;
+			Dataset_From = &Dataset_Exchange;
+			
+			/* */
 			this->lock();
 			b_Empty[BufferId] = true;
 			this->unlock();
@@ -316,13 +319,12 @@ void THREAD__VJ_ALPHA_FFT::update(int now_ms)
 	data_to_output.DataSet.mov_a_1_2 = Dataset_From->DataSet.mov_a_1_2 + double(now_ms - Dataset_From->time_ms) / (Dataset_To->time_ms - Dataset_From->time_ms) * (Dataset_To->DataSet.mov_a_1_2 - Dataset_From->DataSet.mov_a_1_2);
 	data_to_output.DataSet.a_indicator = Dataset_From->DataSet.a_indicator + double(now_ms - Dataset_From->time_ms) / (Dataset_To->time_ms - Dataset_From->time_ms) * (Dataset_To->DataSet.a_indicator - Dataset_From->DataSet.a_indicator);
 	data_to_output.DataSet.a_particle = Dataset_From->DataSet.a_particle + double(now_ms - Dataset_From->time_ms) / (Dataset_To->time_ms - Dataset_From->time_ms) * (Dataset_To->DataSet.a_particle - Dataset_From->DataSet.a_particle);
+	data_to_output.DataSet.a_Strobe = Dataset_From->DataSet.a_Strobe + double(now_ms - Dataset_From->time_ms) / (Dataset_To->time_ms - Dataset_From->time_ms) * (Dataset_To->DataSet.a_Strobe - Dataset_From->DataSet.a_Strobe);
 
 	data_to_output.DataSet.b_mov_Effect_On = Dataset_From->DataSet.b_mov_Effect_On;
 	data_to_output.DataSet.b_mov0_Effect_On = Dataset_From->DataSet.b_mov0_Effect_On;
-	data_to_output.DataSet.ParticlePos = Dataset_From->DataSet.ParticlePos;
 	data_to_output.DataSet.b_GeneratedImage_on = Dataset_From->DataSet.b_GeneratedImage_on;
 	data_to_output.DataSet.b_text_on = Dataset_From->DataSet.b_text_on;
-	data_to_output.DataSet.b_Strobe_on = Dataset_From->DataSet.b_Strobe_on;
 }
 
 /******************************
@@ -344,10 +346,9 @@ void THREAD__VJ_ALPHA_FFT::draw(float* spectrum, int N_SPECTRUM)
 				ofToString(data_to_output.DataSet.mov_a_1_2)			+ "," + 
 				ofToString(data_to_output.DataSet.a_indicator)			+ "," + 
 				ofToString(data_to_output.DataSet.a_particle)			+ "," + 
-				ofToString(data_to_output.DataSet.ParticlePos)			+ "," + 
 				ofToString(data_to_output.DataSet.b_GeneratedImage_on)	+ "," + 
 				ofToString(data_to_output.DataSet.b_text_on)			+ "," + 
-				ofToString(data_to_output.DataSet.b_Strobe_on)			+ "|";
+				ofToString(data_to_output.DataSet.a_Strobe)			+ "|";
 				
 	if(spectrum != NULL){
 		for(int i = 0; i < N_SPECTRUM; i++){
@@ -383,7 +384,6 @@ void THREAD__VJ_ALPHA_FFT::draw_black(float* spectrum, int N_SPECTRUM)
 				ofToString(0)	+ "," + 
 				ofToString(0)	+ "," + 
 				ofToString(0)	+ "," + 
-				ofToString(DATA_SET__ALPHA_FFT::PARTICLE_POS__CENTER)	+ "," + 
 				ofToString(0)	+ "," + 
 				ofToString(0)	+ "," + 
 				ofToString(0)	+ "|";

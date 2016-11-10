@@ -17,22 +17,6 @@ class
 /**************************************************
 **************************************************/
 struct DATA_SET__ALPHA_FFT{
-	enum PARTICLE_POS{
-		PARTICLE_POS__LEFT_UP,
-		PARTICLE_POS__LEFT_MIDDLE,
-		PARTICLE_POS__LEFT_LOW,
-		
-		PARTICLE_POS__CENTER_UP,
-		PARTICLE_POS__CENTER,
-		PARTICLE_POS__CENTER_LOW,
-		
-		PARTICLE_POS__RIGHT_UP,
-		PARTICLE_POS__RIGHT_MIDDLE,
-		PARTICLE_POS__RIGHT_LOW,
-		
-		NUM_PARTICLE_POS,
-	};
-	
 	double	mov_a;
 	bool	b_mov_Effect_On;
 	double	mov_a_0_12;
@@ -40,10 +24,9 @@ struct DATA_SET__ALPHA_FFT{
 	double	mov_a_1_2;
 	double	a_indicator;
 	double	a_particle;
-	PARTICLE_POS ParticlePos;
 	bool	b_GeneratedImage_on;
 	bool	b_text_on;
-	bool	b_Strobe_on;
+	double	a_Strobe;
 	
 	DATA_SET__ALPHA_FFT()
 	{
@@ -59,10 +42,9 @@ struct DATA_SET__ALPHA_FFT{
 		mov_a_1_2 = 0;
 		a_indicator = 0;
 		a_particle = 0;
-		ParticlePos = PARTICLE_POS__CENTER;
 		b_GeneratedImage_on = 0;
 		b_text_on = 0;
-		b_Strobe_on = 0;
+		a_Strobe = 0;
 	}
 };
 

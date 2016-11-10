@@ -17,6 +17,7 @@ ofApp::ofApp()
 , VOL_INIT(1.0)
 , VOL_STEP(0.05)
 , timer_StartStaying_inThis_State(0)
+, b_PauseSound(false)
 {
 	thread_TimeTable[THREAD_TIMETABLE__DMX]							= THREAD__DMX_KEY_TIMETABLE::getInstance();
 	thread_TimeTable[THREAD_TIMETABLE__VJ_CONTENTS_CHANGE_TIMING]	= THREAD__VJ_CONTENTS_CHANGE_TIMETABLE::getInstance();
@@ -582,6 +583,13 @@ void ofApp::keyPressed(int key){
 			
 		case 't':
 			print_total_musicTime();
+			break;
+			
+		case ' ':
+			if(State == STATE__RUNNING){
+				b_PauseSound = !b_PauseSound;
+			}
+			sound.setPaused(b_PauseSound);
 			break;
 			
 		case '0':

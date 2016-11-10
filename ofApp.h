@@ -45,6 +45,7 @@ private:
 	const double VOL_INIT;
 	const double VOL_STEP;
 	ofSoundPlayer sound;
+	bool b_PauseSound;
 	
 	int now_ms;
 	int t_SeekTo_ms;
