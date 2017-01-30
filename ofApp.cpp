@@ -70,8 +70,6 @@ void ofApp::exit()
 	/********************
 	********************/
 	printMessage("Good-bye");
-	
-	std::exit(1);
 }
 
 
@@ -115,7 +113,7 @@ void ofApp::setup(){
 	/********************
 	********************/
 	sound.loadSound("music.wav");
-	if(!sound.isLoaded())	{ ERROR_MSG(); ofExit(); }
+	if(!sound.isLoaded())	{ ERROR_MSG(); std::exit(1); }
 	
 	sound.setLoop(true);
 	sound.setMultiPlay( true );

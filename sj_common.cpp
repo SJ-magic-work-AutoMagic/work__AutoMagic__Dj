@@ -37,7 +37,7 @@ void fopen_LogFile()
 		sprintf(FileName, "../../../data/Log_%d.csv", i);
 		
 		fp_Log[i] = fopen(FileName, "w");
-		if(fp_Log == NULL)	{ ERROR_MSG(); ofExit(); }
+		if(fp_Log == NULL)	{ ERROR_MSG(); std::exit(1); }
 	}
 }
 
