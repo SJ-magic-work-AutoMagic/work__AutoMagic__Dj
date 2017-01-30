@@ -85,7 +85,7 @@ void THREAD__DMX_KEY_TIMETABLE::charge(int BufferId_toCharge)
 				fscanf(fp, "%s", buf);
 				int Scenario_NUM_LEDS = atoi(buf);
 				if(Scenario_NUM_LEDS != NUM_LEDS){
-					ERROR_MSG(); ofExit(1);
+					ERROR_MSG(); std::exit(1);
 				}
 				
 			}else if(strcmp(buf, "<time_ms>") == 0){

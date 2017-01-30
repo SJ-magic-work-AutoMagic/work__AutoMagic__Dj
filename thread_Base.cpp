@@ -100,7 +100,7 @@ bool THREAD_BASE::Wait_NextBufferFilled(double timeout)
 	}
 	
 	ERROR_MSG();
-	ofExit();
+	std::exit(1);
 	return 1;
 }
 
